@@ -26,7 +26,7 @@ with st.sidebar:
         "Hybrid Search Weight", 
         min_value=0.00, 
         max_value=1.00, 
-        value=0.50, 
+        value=0.75, 
         step=0.01, 
         help="1.0 = Vector search only, 0.0 = Keyword search only (BM25)."
     )

@@ -18,7 +18,7 @@ store = get_store()
 with st.sidebar:
     st.header("Evaluation Settings")
     eval_file = st.text_input("eval_questions.json path", value="docs/internal/dataset_case3_v1.0_fix/eval_questions.json")
-    alpha = st.slider("Hybrid Search Weight (Alpha)", 0.00, 1.00, 0.50, 0.01, help="1.0 = Vector, 0.0 = BM25")
+    alpha = st.slider("Hybrid Search Weight (Alpha)", 0.00, 1.00, 0.75, 0.01, help="1.0 = Vector, 0.0 = BM25")
 
 if st.button("Run Evaluation", type="primary"):
     q_path = Path(eval_file)
