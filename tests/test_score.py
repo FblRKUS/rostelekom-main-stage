@@ -1,9 +1,11 @@
 from score import chunks_match, score_question, parse_chunk_id
 
+
 def test_parse_chunk_id():
     assert parse_chunk_id("file.py:func:10") == ("file.py", "func", 10)
     assert parse_chunk_id("file.py:func") is None
     assert parse_chunk_id("file.py:func:abc") is None
+
 
 def test_precision_with_line_tolerance():
     # Exact match
@@ -18,6 +20,7 @@ def test_precision_with_line_tolerance():
     assert not chunks_match("a.py:func_other:10", "a.py:func:10")
     # Different path
     assert not chunks_match("b.py:func:10", "a.py:func:10")
+
 
 def test_precision_calculation():
     correct = ["a:func:10", "b:func:20"]

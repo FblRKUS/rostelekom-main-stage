@@ -24,7 +24,7 @@ def test_rag_messages_includes_code_and_question():
     assert messages[0]["role"] == "system"
     assert "def handle_error(): pass" in messages[0]["content"]
     assert "utils.py" in messages[0]["content"]
-    
+
     # The last message is the user question
     assert messages[1]["role"] == "user"
     assert messages[1]["content"] == "How to handle errors?"
@@ -49,7 +49,7 @@ def test_rag_generate_stream_with_ollama(mock_ollama):
     mock_stream = [
         {"message": {"content": "Mock "}},
         {"message": {"content": "stream "}},
-        {"message": {"content": "answer"}}
+        {"message": {"content": "answer"}},
     ]
     mock_ollama.chat.return_value = mock_stream
 
@@ -59,8 +59,9 @@ def test_rag_generate_stream_with_ollama(mock_ollama):
 
     stream = generator.generate_stream(question, chunks)
     result = "".join(list(stream))
-    
+
     assert result == "Mock stream answer"
+
 
 def test_rag_generate_stream_without_ollama():
     generator = RAGAnswerGenerator(use_llm=False)
@@ -77,6 +78,8 @@ def test_rag_generate_stream_without_ollama():
     result = "".join(list(stream))
     assert "LLM is disabled" in result
     assert "utils.py:handle_error:10" in result
+
+
 def test_rag_without_ollama():
     generator = RAGAnswerGenerator(use_llm=False)
 
@@ -93,6 +96,3 @@ def test_rag_without_ollama():
     answer = generator.generate(question, chunks)
     assert "LLM is disabled" in answer
     assert "utils.py:handle_error:10" in answer
-
-
-
