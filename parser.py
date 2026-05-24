@@ -59,7 +59,9 @@ class _Visitor(ast.NodeVisitor):
         self._current_class = prev_class
 
     def _record_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-        name = f"{self._current_class}.{node.name}" if self._current_class else node.name
+        name = (
+            f"{self._current_class}.{node.name}" if self._current_class else node.name
+        )
         content = self._extract_content(node)
         self.chunks.append(
             CodeChunk(
@@ -78,7 +80,7 @@ class CodeIndexer:
         try:
             source = file_path.read_text(encoding="utf-8", errors="replace")
             rel_path = file_path.relative_to(base_path).as_posix()
-            
+
             if file_path.suffix == ".py":
                 return self._parse_python(source, rel_path)
             elif file_path.suffix == ".java":
@@ -103,30 +105,34 @@ class CodeIndexer:
     def _parse_java(self, source: str, rel_path: str) -> list[CodeChunk]:
         chunks = []
         lines = source.splitlines()
-        
+
         class_name = "Unknown"
         # Extremely primitive Java method extraction
-        class_pattern = re.compile(r'class\s+(\w+)')
-        method_pattern = re.compile(r'(?:public|protected|private)\s+(?:static\s+)?[A-Za-z0-9_<>\.\[\]]+\s+(\w+)\s*\(')
-        
+        class_pattern = re.compile(r"class\s+(\w+)")
+        method_pattern = re.compile(
+            r"(?:public|protected|private)\s+(?:static\s+)?[A-Za-z0-9_<>\.\[\]]+\s+(\w+)\s*\("
+        )
+
         for i, line in enumerate(lines):
             cls_match = class_pattern.search(line)
             if cls_match:
                 class_name = cls_match.group(1)
                 continue
-                
+
             method_match = method_pattern.search(line)
             if method_match:
                 method_name = method_match.group(1)
-                chunks.append(CodeChunk(
-                    file_path=rel_path,
-                    type="function",
-                    name=f"{class_name}.{method_name}",
-                    content=line.strip(),
-                    docstring=None,
-                    start_line=i + 1
-                ))
-                
+                chunks.append(
+                    CodeChunk(
+                        file_path=rel_path,
+                        type="function",
+                        name=f"{class_name}.{method_name}",
+                        content=line.strip(),
+                        docstring=None,
+                        start_line=i + 1,
+                    )
+                )
+
         return chunks
 
     def scan_directory(self, directory: Path) -> list[CodeChunk]:
@@ -134,10 +140,10 @@ class CodeIndexer:
         # Sort paths to ensure stable order
         py_files = sorted(directory.rglob("*.py"))
         java_files = sorted(directory.rglob("*.java"))
-        
+
         for p in py_files + java_files:
             if not p.is_file():
                 continue
             all_chunks.extend(self.parse_file(p, directory))
-            
+
         return all_chunks

@@ -14,9 +14,13 @@ from vector_store import VectorStore
 _DEFAULT_GITHUB_BRANCHES = ("main", "master")
 _GITHUB_HOSTS = {"github.com", "www.github.com"}
 
+
 def _parse_github_repo_url(repo_url: str) -> tuple[str, str, str | None]:
     parsed = urllib.parse.urlparse(repo_url.strip())
-    if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() not in _GITHUB_HOSTS:
+    if (
+        parsed.scheme not in {"http", "https"}
+        or parsed.netloc.lower() not in _GITHUB_HOSTS
+    ):
         raise ValueError("GitHub URL must use https://github.com/{owner}/{repo}")
 
     parts = [part for part in parsed.path.split("/") if part]
@@ -28,7 +32,10 @@ def _parse_github_repo_url(repo_url: str) -> tuple[str, str, str | None]:
     preferred_branch = parts[3] if len(parts) >= 4 and parts[2] == "tree" else None
     return owner, repo, preferred_branch
 
-def _download_github_archive(owner: str, repo: str, destination: Path, preferred_branch: str | None = None) -> Path:
+
+def _download_github_archive(
+    owner: str, repo: str, destination: Path, preferred_branch: str | None = None
+) -> Path:
     unique_branches: list[str] = []
     for branch in [preferred_branch, *_DEFAULT_GITHUB_BRANCHES]:
         if branch and branch not in unique_branches:
@@ -36,7 +43,9 @@ def _download_github_archive(owner: str, repo: str, destination: Path, preferred
 
     last_404: urllib.error.HTTPError | None = None
     for branch in unique_branches:
-        archive_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip"
+        archive_url = (
+            f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.zip"
+        )
         archive_path = destination / f"{repo}-{branch}.zip"
         try:
             with urllib.request.urlopen(archive_url) as response:
@@ -47,7 +56,9 @@ def _download_github_archive(owner: str, repo: str, destination: Path, preferred
                 continue
             raise RuntimeError(f"GitHub archive request failed: {archive_url}") from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(f"Network error while downloading: {archive_url}") from exc
+            raise RuntimeError(
+                f"Network error while downloading: {archive_url}"
+            ) from exc
 
         try:
             with zipfile.ZipFile(archive_path) as archive:
@@ -63,14 +74,19 @@ def _download_github_archive(owner: str, repo: str, destination: Path, preferred
         if len(candidates) == 1:
             return candidates[0]
 
-        branch_candidates = [path for path in candidates if path.name.endswith(f"-{branch}")]
+        branch_candidates = [
+            path for path in candidates if path.name.endswith(f"-{branch}")
+        ]
         if branch_candidates:
             return branch_candidates[0]
 
         raise RuntimeError("Unable to detect extracted repository root folder")
 
     if last_404 is not None:
-        raise ValueError("Could not download repository archive. Tried branches: " + ", ".join(unique_branches)) from last_404
+        raise ValueError(
+            "Could not download repository archive. Tried branches: "
+            + ", ".join(unique_branches)
+        ) from last_404
     raise RuntimeError("Repository archive download failed")
 
 
@@ -108,7 +124,7 @@ def main():
 
     elapsed = time.time() - start_time
     print(f"Successfully indexed {len(chunks)} chunks in {elapsed:.2f} seconds.")
-    
+
     if args.github:
         tmp_dir_obj.cleanup()
 

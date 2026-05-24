@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 from vector_store import VectorStore
@@ -26,7 +25,7 @@ def chunks_match(predicted: str, reference: str, tolerance: int = 2) -> bool:
         return False
     p_path, p_name, p_line = p
     r_path, r_name, r_line = r
-    return (p_path == r_path and p_name == r_name and abs(p_line - r_line) <= tolerance)
+    return p_path == r_path and p_name == r_name and abs(p_line - r_line) <= tolerance
 
 
 def score_question(top5: list[str], correct: list[str]) -> float:
@@ -52,10 +51,20 @@ def score_question(top5: list[str], correct: list[str]) -> float:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate VectorStore against questions")
-    parser.add_argument("--questions", required=True, help="Path to eval_questions.json")
-    parser.add_argument("--predictions", help="Output or input results.json", default="results.json")
-    parser.add_argument("--evaluate-only", action="store_true", help="Do not run inference, just evaluate existing predictions")
+    parser = argparse.ArgumentParser(
+        description="Evaluate VectorStore against questions"
+    )
+    parser.add_argument(
+        "--questions", required=True, help="Path to eval_questions.json"
+    )
+    parser.add_argument(
+        "--predictions", help="Output or input results.json", default="results.json"
+    )
+    parser.add_argument(
+        "--evaluate-only",
+        action="store_true",
+        help="Do not run inference, just evaluate existing predictions",
+    )
     args = parser.parse_args()
 
     q_path = Path(args.questions)
@@ -74,15 +83,14 @@ def main():
             qid = q["question_id"]
             query = q["query"]
             results = store.search(query, top_k=5)
-            predictions.append({
-                "question_id": qid,
-                "top_5_chunks": [r.chunk_id for r in results]
-            })
-            
+            predictions.append(
+                {"question_id": qid, "top_5_chunks": [r.chunk_id for r in results]}
+            )
+
         with open(args.predictions, "w", encoding="utf-8") as f:
             json.dump(predictions, f, indent=2, ensure_ascii=False)
         print(f"Saved predictions to {args.predictions}")
-            
+
     with open(args.predictions, "r", encoding="utf-8") as f:
         predictions = json.load(f)
 
@@ -94,13 +102,15 @@ def main():
         correct = q.get("correct_chunk_ids", [])
         top5 = pred_index.get(qid, [])
         score = score_question(top5, correct)
-        per_question.append({
-            "question_id": qid,
-            "difficulty": q.get("difficulty", "unknown"),
-            "language": q.get("language", "unknown"),
-            "n_correct": len(correct),
-            "score": score
-        })
+        per_question.append(
+            {
+                "question_id": qid,
+                "difficulty": q.get("difficulty", "unknown"),
+                "language": q.get("language", "unknown"),
+                "n_correct": len(correct),
+                "score": score,
+            }
+        )
 
     total = len(per_question)
     if total == 0:
@@ -112,14 +122,16 @@ def main():
     print("=== CodeLens RAG -- Scoring ===")
     print(f"Questions evaluated: {total}")
     print(f"Mean Precision@5: {mean_score:.3f}")
-    
+
     print("\nPer-question detail:")
     for r in sorted(per_question, key=lambda x: x["question_id"]):
         n = r["n_correct"]
         s = r["score"]
         matched_count = round(s * min(5, r["n_correct"]))
-        print(f"  {r['question_id']} [{r['difficulty']}, {r['language']}]"
-              f" -- {matched_count}/{min(5, n)} -> {s:.2f}")
+        print(
+            f"  {r['question_id']} [{r['difficulty']}, {r['language']}]"
+            f" -- {matched_count}/{min(5, n)} -> {s:.2f}"
+        )
 
 
 if __name__ == "__main__":

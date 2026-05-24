@@ -24,15 +24,19 @@ def _format_embedding_text(chunk: CodeChunk) -> str:
 
 
 class VectorStore:
-    def __init__(self, persist_path: str = "./chroma_db", collection_name: str = "codelens"):
+    def __init__(
+        self, persist_path: str = "./chroma_db", collection_name: str = "codelens"
+    ):
         self.persist_path = persist_path
         self.collection_name = collection_name
         self.client = chromadb.PersistentClient(path=self.persist_path)
-        
-        self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="paraphrase-multilingual-MiniLM-L12-v2"
+
+        self.embedding_function = (
+            embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="paraphrase-multilingual-MiniLM-L12-v2"
+            )
         )
-        
+
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
             embedding_function=self.embedding_function,
@@ -44,7 +48,7 @@ class VectorStore:
         bm25_path = os.path.join(self.persist_path, "bm25.json")
         if os.path.exists(bm25_path):
             try:
-                with open(bm25_path, 'r', encoding='utf-8') as f:
+                with open(bm25_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self.bm25 = BM25.from_dict(data)
             except Exception:
@@ -57,13 +61,13 @@ class VectorStore:
             data = self.collection.get()
         except Exception:
             data = {"metadatas": []}
-            
+
         if data and data.get("metadatas"):
             corpus = [m.get("content", "") for m in data["metadatas"]]
             self.bm25 = BM25(corpus)
             bm25_path = os.path.join(self.persist_path, "bm25.json")
             try:
-                with open(bm25_path, 'w', encoding='utf-8') as f:
+                with open(bm25_path, "w", encoding="utf-8") as f:
                     json.dump(self.bm25.to_dict(), f)
             except Exception:
                 pass
@@ -103,7 +107,7 @@ class VectorStore:
                 documents=documents[i : i + batch_size],
                 metadatas=metadatas[i : i + batch_size],
             )
-            
+
         # Rebuild BM25 index after adding new chunks
         self._rebuild_bm25()
 
@@ -122,7 +126,9 @@ class VectorStore:
 
         # results is a dict with lists of lists (batch queries)
         ids = results["ids"][0]
-        distances = results["distances"][0] if results["distances"] else [0.0] * len(ids)
+        distances = (
+            results["distances"][0] if results["distances"] else [0.0] * len(ids)
+        )
         metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(ids)
 
         for i in range(len(ids)):
@@ -139,19 +145,22 @@ class VectorStore:
 
         return search_results
 
-    def hybrid_search(self, query: str, top_k: int = 5, alpha: float = 0.5) -> list[SearchResult]:
+    def hybrid_search(
+        self, query: str, top_k: int = 5, alpha: float = 0.5
+    ) -> list[SearchResult]:
         if self.collection.count() == 0:
             return []
 
         # Vector search (get up to 50 for fusion)
         n_fetch = min(50, self.collection.count())
         results = self.collection.query(query_texts=[query], n_results=n_fetch)
-        
+
         vector_ids = results["ids"][0] if results["ids"] else []
         vector_distances = results["distances"][0] if results["distances"] else []
-        
+
         max_dist = max(vector_distances) if vector_distances else 1.0
-        if max_dist == 0: max_dist = 1.0
+        if max_dist == 0:
+            max_dist = 1.0
 
         vector_scores = {}
         for i, vid in enumerate(vector_ids):
@@ -162,39 +171,40 @@ class VectorStore:
         all_data = self.collection.get()
         all_ids = all_data["ids"]
         all_metas = all_data["metadatas"]
-        
+
         if not self.bm25 or self.bm25.corpus_size != len(all_ids):
             self._rebuild_bm25()
-            
+
         bm25_scores = self.bm25.get_scores(query)
         max_bm25 = max(bm25_scores) if bm25_scores else 1.0
-        if max_bm25 == 0: max_bm25 = 1.0
-        
+        if max_bm25 == 0:
+            max_bm25 = 1.0
+
         combined = []
         for i, doc_id in enumerate(all_ids):
             vs = vector_scores.get(doc_id, 0.0)
             bs = bm25_scores[i] / max_bm25
-            
+
             score = alpha * vs + (1.0 - alpha) * bs
             if score > 0:
-                combined.append({
-                    "chunk_id": doc_id,
-                    "score": score,
-                    "metadata": all_metas[i]
-                })
-                
+                combined.append(
+                    {"chunk_id": doc_id, "score": score, "metadata": all_metas[i]}
+                )
+
         # Sort by combined score descending
         combined.sort(key=lambda x: x["score"], reverse=True)
-        
+
         search_results = []
         for res in combined[:top_k]:
-            search_results.append(SearchResult(
-                chunk_id=res["chunk_id"],
-                content=res["metadata"].get("content", ""),
-                metadata=res["metadata"],
-                score=res["score"]  # Note: higher is better here
-            ))
-            
+            search_results.append(
+                SearchResult(
+                    chunk_id=res["chunk_id"],
+                    content=res["metadata"].get("content", ""),
+                    metadata=res["metadata"],
+                    score=res["score"],  # Note: higher is better here
+                )
+            )
+
         return search_results
 
     def clear(self) -> None:

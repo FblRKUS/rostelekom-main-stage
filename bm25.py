@@ -3,12 +3,13 @@ import re
 from collections import defaultdict
 from typing import Dict, List, Any
 
+
 def tokenize(text: str) -> List[str]:
     if not text:
         return []
     text = text.lower()
     # Split by anything that isn't a letter or number
-    tokens = re.split(r'[^a-z0-9]+', text)
+    tokens = re.split(r"[^a-z0-9]+", text)
     return [t for t in tokens if t]
 
 
@@ -21,7 +22,7 @@ class BM25:
         self.doc_freqs: List[Dict[str, int]] = []
         self.idf: Dict[str, float] = {}
         self.doc_len: List[int] = []
-        
+
         if corpus:
             self._initialize(corpus)
 
@@ -29,26 +30,26 @@ class BM25:
         self.corpus_size = len(corpus)
         nd = {}
         num_doc = 0
-        
+
         for document in corpus:
             self.doc_len.append(0)
             self.doc_freqs.append(defaultdict(int))
-            
+
             tokens = tokenize(document)
             self.doc_len[num_doc] = len(tokens)
             self.avgdl += len(tokens)
-            
+
             for word in tokens:
                 self.doc_freqs[num_doc][word] += 1
-                
+
             for word in self.doc_freqs[num_doc].keys():
                 nd[word] = nd.get(word, 0) + 1
-                
+
             num_doc += 1
-            
+
         if self.corpus_size > 0:
             self.avgdl /= self.corpus_size
-        
+
         for word, freq in nd.items():
             idf_score = math.log(((self.corpus_size - freq + 0.5) / (freq + 0.5)) + 1)
             self.idf[word] = idf_score
@@ -57,19 +58,19 @@ class BM25:
         scores = [0.0] * self.corpus_size
         if self.corpus_size == 0:
             return scores
-            
+
         tokens = tokenize(query)
         for i in range(self.corpus_size):
             doc_len = self.doc_len[i]
             for token in tokens:
                 if token not in self.doc_freqs[i]:
                     continue
-                    
+
                 freq = self.doc_freqs[i][token]
                 num = freq * (self.k1 + 1)
                 den = freq + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl)
                 scores[i] += self.idf.get(token, 0) * (num / den)
-                
+
         return scores
 
     def to_dict(self) -> Dict[str, Any]:
@@ -80,11 +81,11 @@ class BM25:
             "avgdl": self.avgdl,
             "doc_freqs": [dict(df) for df in self.doc_freqs],
             "idf": self.idf,
-            "doc_len": self.doc_len
+            "doc_len": self.doc_len,
         }
-        
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'BM25':
+    def from_dict(cls, data: Dict[str, Any]) -> "BM25":
         bm25 = cls()
         bm25.k1 = data["k1"]
         bm25.b = data["b"]

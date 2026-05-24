@@ -2,6 +2,7 @@ import logging
 
 try:
     import ollama
+
     OLLAMA_AVAILABLE = True
 except ImportError:
     OLLAMA_AVAILABLE = False
@@ -19,7 +20,9 @@ class RAGAnswerGenerator:
             logger.warning("Ollama module is not installed. LLM generation disabled.")
             self.use_llm = False
 
-    def _build_messages(self, question: str, chunks: list[SearchResult], history: list[dict] = None) -> list[dict]:
+    def _build_messages(
+        self, question: str, chunks: list[SearchResult], history: list[dict] = None
+    ) -> list[dict]:
         context = ""
         for i, chunk in enumerate(chunks, 1):
             context += f"--- Fragment {i} ({chunk.metadata.get('file_path')}) ---\n"
@@ -32,38 +35,42 @@ class RAGAnswerGenerator:
             "Code fragments:\n"
             f"{context}"
         )
-        
+
         messages = [{"role": "system", "content": system_prompt}]
         if history:
             messages.extend(history)
         messages.append({"role": "user", "content": question})
         return messages
 
-    def generate(self, question: str, chunks: list[SearchResult], history: list[dict] = None) -> str:
+    def generate(
+        self, question: str, chunks: list[SearchResult], history: list[dict] = None
+    ) -> str:
         if not self.use_llm:
             chunk_list = "\n".join([f"- {c.chunk_id}" for c in chunks])
             return f"LLM is disabled. Found {len(chunks)} relevant fragments:\n{chunk_list}"
 
         messages = self._build_messages(question, chunks, history)
-        
+
         try:
             response = ollama.chat(model=self.model, messages=messages)
-            return response['message']['content']
+            return response["message"]["content"]
         except Exception as e:
             logger.error(f"Failed to generate answer with Ollama: {e}")
             return f"Error connecting to LLM: {e}"
 
-    def generate_stream(self, question: str, chunks: list[SearchResult], history: list[dict] = None):
+    def generate_stream(
+        self, question: str, chunks: list[SearchResult], history: list[dict] = None
+    ):
         if not self.use_llm:
             yield self.generate(question, chunks)
             return
 
         messages = self._build_messages(question, chunks, history)
-        
+
         try:
             stream = ollama.chat(model=self.model, messages=messages, stream=True)
             for chunk in stream:
-                yield chunk['message']['content']
+                yield chunk["message"]["content"]
         except Exception as e:
             logger.error(f"Failed to stream answer with Ollama: {e}")
             yield f"Error connecting to LLM: {e}"
