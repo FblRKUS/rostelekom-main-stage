@@ -29,8 +29,9 @@ class _Visitor(ast.NodeVisitor):
         self._current_class: str | None = None
 
     def _extract_content(self, node: ast.AST) -> str:
-        start = node.lineno - 1
-        end = getattr(node, "end_lineno", node.lineno)
+        # Use getattr to avoid mypy complaints about attributes on ast.AST
+        start = getattr(node, "lineno", 1) - 1
+        end = getattr(node, "end_lineno", getattr(node, "lineno", 1))
         return "\n".join(self.source_lines[start:end])
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:

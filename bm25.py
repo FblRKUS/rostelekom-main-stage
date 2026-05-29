@@ -1,7 +1,7 @@
 import math
 import re
 from collections import defaultdict
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 
 def tokenize(text: str) -> List[str]:
@@ -14,7 +14,7 @@ def tokenize(text: str) -> List[str]:
 
 
 class BM25:
-    def __init__(self, corpus: List[str] = None, k1: float = 1.5, b: float = 0.75):
+    def __init__(self, corpus: Optional[List[str]] = None, k1: float = 1.5, b: float = 0.75):
         self.k1 = k1
         self.b = b
         self.corpus_size = 0
@@ -28,7 +28,7 @@ class BM25:
 
     def _initialize(self, corpus: List[str]):
         self.corpus_size = len(corpus)
-        nd = {}
+        nd: Dict[str, int] = {}
         num_doc = 0
 
         for document in corpus:
