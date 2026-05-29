@@ -127,7 +127,11 @@ class VectorStore:
 
         # results is a dict with lists of lists (batch queries)
         ids = results["ids"][0]
-        distances = results.get("distances", [[]])[0] if results.get("distances") else [0.0] * len(ids)
+        distances = (
+            results.get("distances", [[]])[0]
+            if results.get("distances")
+            else [0.0] * len(ids)
+        )
         metadatas = results.get("metadatas", [[{}]])[0]
 
         for i in range(len(ids)):
@@ -155,7 +159,9 @@ class VectorStore:
         results: Any = self.collection.query(query_texts=[query], n_results=n_fetch)
 
         vector_ids = results.get("ids", [[]])[0] if results.get("ids") else []
-        vector_distances = results.get("distances", [[]])[0] if results.get("distances") else []
+        vector_distances = (
+            results.get("distances", [[]])[0] if results.get("distances") else []
+        )
 
         max_dist = max(vector_distances) if vector_distances else 1.0
         # avoid divide by zero
@@ -192,7 +198,13 @@ class VectorStore:
 
             score = alpha * vs + (1.0 - alpha) * bs
             if score > 0:
-                combined.append({"chunk_id": doc_id, "score": score, "metadata": all_metas[i] if i < len(all_metas) else {}})
+                combined.append(
+                    {
+                        "chunk_id": doc_id,
+                        "score": score,
+                        "metadata": all_metas[i] if i < len(all_metas) else {},
+                    }
+                )
 
         # Sort by combined score descending
         combined.sort(key=lambda x: x["score"], reverse=True)

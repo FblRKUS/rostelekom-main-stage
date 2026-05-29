@@ -14,7 +14,9 @@ def tokenize(text: str) -> List[str]:
 
 
 class BM25:
-    def __init__(self, corpus: Optional[List[str]] = None, k1: float = 1.5, b: float = 0.75):
+    def __init__(
+        self, corpus: Optional[List[str]] = None, k1: float = 1.5, b: float = 0.75
+    ):
         self.k1 = k1
         self.b = b
         self.corpus_size = 0
