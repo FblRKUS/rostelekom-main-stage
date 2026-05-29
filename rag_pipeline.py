@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, List, Dict, Any
 
 try:
     import ollama
@@ -21,7 +22,10 @@ class RAGAnswerGenerator:
             self.use_llm = False
 
     def _build_messages(
-        self, question: str, chunks: list[SearchResult], history: list[dict] = None
+        self,
+        question: str,
+        chunks: list[SearchResult],
+        history: Optional[List[Dict[str, Any]]] = None,
     ) -> list[dict]:
         context = ""
         for i, chunk in enumerate(chunks, 1):
@@ -43,7 +47,10 @@ class RAGAnswerGenerator:
         return messages
 
     def generate(
-        self, question: str, chunks: list[SearchResult], history: list[dict] = None
+        self,
+        question: str,
+        chunks: list[SearchResult],
+        history: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         if not self.use_llm:
             chunk_list = "\n".join([f"- {c.chunk_id}" for c in chunks])
@@ -59,7 +66,10 @@ class RAGAnswerGenerator:
             return f"Error connecting to LLM: {e}"
 
     def generate_stream(
-        self, question: str, chunks: list[SearchResult], history: list[dict] = None
+        self,
+        question: str,
+        chunks: list[SearchResult],
+        history: Optional[List[Dict[str, Any]]] = None,
     ):
         if not self.use_llm:
             yield self.generate(question, chunks)

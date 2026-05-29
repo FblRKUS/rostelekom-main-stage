@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast, Optional, Dict, List
 
 import chromadb
 from chromadb.utils import embedding_functions
@@ -31,17 +31,21 @@ class VectorStore:
         self.collection_name = collection_name
         self.client = chromadb.PersistentClient(path=self.persist_path)
 
-        self.embedding_function = (
+        # Chromadb embedding func has a complex type signature
+        # Cast to Any to keep mypy quiet while preserving runtime behavior.
+        self.embedding_function = cast(
+            Any,
             embedding_functions.SentenceTransformerEmbeddingFunction(
                 model_name="paraphrase-multilingual-MiniLM-L12-v2"
-            )
+            ),
         )
 
+        # Cast embedding_function to Any to avoid typing mismatch with chromadb stubs
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
-            embedding_function=self.embedding_function,
+            embedding_function=cast(Any, self.embedding_function),
         )
-        self.bm25 = None
+        self.bm25: Optional[BM25] = None
         self._load_bm25()
 
     def _load_bm25(self) -> None:
@@ -58,7 +62,7 @@ class VectorStore:
 
     def _rebuild_bm25(self) -> None:
         try:
-            data = self.collection.get()
+            data: Any = self.collection.get()
         except Exception:
             data = {"metadatas": []}
 
@@ -105,7 +109,7 @@ class VectorStore:
             self.collection.upsert(
                 ids=ids[i : i + batch_size],
                 documents=documents[i : i + batch_size],
-                metadatas=metadatas[i : i + batch_size],
+                metadatas=cast(Any, metadatas[i : i + batch_size]),
             )
 
         # Rebuild BM25 index after adding new chunks
@@ -115,31 +119,30 @@ class VectorStore:
         if self.collection.count() == 0:
             return []
 
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=top_k,
-        )
+        results: Any = self.collection.query(query_texts=[query], n_results=top_k)
 
-        search_results = []
-        if not results["ids"] or not results["ids"][0]:
+        search_results: List[SearchResult] = []
+        if not results.get("ids") or not results["ids"][0]:
             return []
 
         # results is a dict with lists of lists (batch queries)
         ids = results["ids"][0]
         distances = (
-            results["distances"][0] if results["distances"] else [0.0] * len(ids)
+            results.get("distances", [[]])[0]
+            if results.get("distances")
+            else [0.0] * len(ids)
         )
-        metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(ids)
+        metadatas = results.get("metadatas", [[{}]])[0]
 
         for i in range(len(ids)):
-            meta = metadatas[i]
-            content = meta.get("content", "")
+            meta: Any = metadatas[i] if i < len(metadatas) else {}
+            content = str(meta.get("content", "")) if hasattr(meta, "get") else ""
             search_results.append(
                 SearchResult(
-                    chunk_id=ids[i],
+                    chunk_id=str(ids[i]),
                     content=content,
-                    metadata=meta,
-                    score=distances[i],
+                    metadata=cast(Dict[str, Any], meta),
+                    score=float(distances[i]) if i < len(distances) else 0.0,
                 )
             )
 
@@ -153,55 +156,69 @@ class VectorStore:
 
         # Vector search (get up to 50 for fusion)
         n_fetch = min(50, self.collection.count())
-        results = self.collection.query(query_texts=[query], n_results=n_fetch)
+        results: Any = self.collection.query(query_texts=[query], n_results=n_fetch)
 
-        vector_ids = results["ids"][0] if results["ids"] else []
-        vector_distances = results["distances"][0] if results["distances"] else []
+        vector_ids = results.get("ids", [[]])[0] if results.get("ids") else []
+        vector_distances = (
+            results.get("distances", [[]])[0] if results.get("distances") else []
+        )
 
         max_dist = max(vector_distances) if vector_distances else 1.0
+        # avoid divide by zero
+        eps = 1e-8
         if max_dist == 0:
-            max_dist = 1.0
+            max_dist = eps
 
-        vector_scores = {}
+        vector_scores: Dict[str, float] = {}
         for i, vid in enumerate(vector_ids):
-            # Normalize distance to similarity score
-            vector_scores[vid] = 1.0 - (vector_distances[i] / max_dist)
+            # Normalize distance to similarity score (clamped)
+            try:
+                vector_scores[vid] = max(0.0, 1.0 - (vector_distances[i] / max_dist))
+            except Exception:
+                vector_scores[vid] = 0.0
 
         # BM25 search
-        all_data = self.collection.get()
-        all_ids = all_data["ids"]
-        all_metas = all_data["metadatas"]
+        all_data: Any = self.collection.get()
+        all_ids = all_data.get("ids", []) if isinstance(all_data, dict) else []
+        all_metas = all_data.get("metadatas", []) if isinstance(all_data, dict) else []
 
         if not self.bm25 or self.bm25.corpus_size != len(all_ids):
             self._rebuild_bm25()
 
+        assert self.bm25 is not None
         bm25_scores = self.bm25.get_scores(query)
         max_bm25 = max(bm25_scores) if bm25_scores else 1.0
         if max_bm25 == 0:
-            max_bm25 = 1.0
+            max_bm25 = eps
 
-        combined = []
+        combined: List[Dict[str, Any]] = []
         for i, doc_id in enumerate(all_ids):
             vs = vector_scores.get(doc_id, 0.0)
-            bs = bm25_scores[i] / max_bm25
+            bs = (bm25_scores[i] / max_bm25) if i < len(bm25_scores) else 0.0
 
             score = alpha * vs + (1.0 - alpha) * bs
             if score > 0:
                 combined.append(
-                    {"chunk_id": doc_id, "score": score, "metadata": all_metas[i]}
+                    {
+                        "chunk_id": doc_id,
+                        "score": score,
+                        "metadata": all_metas[i] if i < len(all_metas) else {},
+                    }
                 )
 
         # Sort by combined score descending
         combined.sort(key=lambda x: x["score"], reverse=True)
 
-        search_results = []
+        search_results: List[SearchResult] = []
         for res in combined[:top_k]:
+            meta = res.get("metadata", {})
+            content = str(meta.get("content", "")) if hasattr(meta, "get") else ""
             search_results.append(
                 SearchResult(
-                    chunk_id=res["chunk_id"],
-                    content=res["metadata"].get("content", ""),
-                    metadata=res["metadata"],
-                    score=res["score"],  # Note: higher is better here
+                    chunk_id=str(res["chunk_id"]),
+                    content=content,
+                    metadata=cast(Dict[str, Any], meta),
+                    score=float(res["score"]),  # Note: higher is better here
                 )
             )
 
