@@ -145,32 +145,38 @@ class VectorStore:
         # If all scores are effectively tied, fall back to collection order so
         # identical embeddings produce deterministic results.
         if distances and max(distances) - min(distances) < 1e-9:
-            search_results: List[SearchResult] = []
+            tied_results: List[SearchResult] = []
             for i, doc_id in enumerate(all_data.get("ids", [])[:top_k]):
-                meta: Any = (
+                tied_meta: Any = (
                     all_data.get("metadatas", [])[i]
                     if i < len(all_data.get("metadatas", []))
                     else {}
                 )
-                content = str(meta.get("content", "")) if hasattr(meta, "get") else ""
-                search_results.append(
+                content = (
+                    str(tied_meta.get("content", ""))
+                    if hasattr(tied_meta, "get")
+                    else ""
+                )
+                tied_results.append(
                     SearchResult(
                         chunk_id=str(doc_id),
                         content=content,
-                        metadata=cast(Dict[str, Any], meta),
+                        metadata=cast(Dict[str, Any], tied_meta),
                         score=float(distances[0]),
                     )
                 )
-            return search_results
+            return tied_results
 
         for i in range(len(ids)):
-            meta: Any = metadatas[i] if i < len(metadatas) else {}
-            content = str(meta.get("content", "")) if hasattr(meta, "get") else ""
+            row_meta: Any = metadatas[i] if i < len(metadatas) else {}
+            content = (
+                str(row_meta.get("content", "")) if hasattr(row_meta, "get") else ""
+            )
             search_results.append(
                 SearchResult(
                     chunk_id=str(ids[i]),
                     content=content,
-                    metadata=cast(Dict[str, Any], meta),
+                    metadata=cast(Dict[str, Any], row_meta),
                     score=float(distances[i]) if i < len(distances) else 0.0,
                 )
             )
