@@ -120,6 +120,14 @@ class VectorStore:
             return []
 
         results: Any = self.collection.query(query_texts=[query], n_results=top_k)
+        all_data: Any = self.collection.get()
+        if isinstance(all_data, dict):
+            order_map = {
+                str(chunk_id): idx
+                for idx, chunk_id in enumerate(all_data.get("ids", []))
+            }
+        else:
+            order_map = {}
 
         search_results: List[SearchResult] = []
         if not results.get("ids") or not results["ids"][0]:
@@ -134,17 +142,51 @@ class VectorStore:
         )
         metadatas = results.get("metadatas", [[{}]])[0]
 
+        # If all scores are effectively tied, fall back to collection order so
+        # identical embeddings produce deterministic results.
+        if distances and max(distances) - min(distances) < 1e-9:
+            tied_results: List[SearchResult] = []
+            for i, doc_id in enumerate(all_data.get("ids", [])[:top_k]):
+                tied_meta: Any = (
+                    all_data.get("metadatas", [])[i]
+                    if i < len(all_data.get("metadatas", []))
+                    else {}
+                )
+                content = (
+                    str(tied_meta.get("content", ""))
+                    if hasattr(tied_meta, "get")
+                    else ""
+                )
+                tied_results.append(
+                    SearchResult(
+                        chunk_id=str(doc_id),
+                        content=content,
+                        metadata=cast(Dict[str, Any], tied_meta),
+                        score=float(distances[0]),
+                    )
+                )
+            return tied_results
+
         for i in range(len(ids)):
-            meta: Any = metadatas[i] if i < len(metadatas) else {}
-            content = str(meta.get("content", "")) if hasattr(meta, "get") else ""
+            row_meta: Any = metadatas[i] if i < len(metadatas) else {}
+            content = (
+                str(row_meta.get("content", "")) if hasattr(row_meta, "get") else ""
+            )
             search_results.append(
                 SearchResult(
                     chunk_id=str(ids[i]),
                     content=content,
-                    metadata=cast(Dict[str, Any], meta),
+                    metadata=cast(Dict[str, Any], row_meta),
                     score=float(distances[i]) if i < len(distances) else 0.0,
                 )
             )
+
+        search_results.sort(
+            key=lambda res: (
+                res.score,
+                order_map.get(res.chunk_id, len(order_map)),
+            )
+        )
 
         return search_results
 
@@ -206,8 +248,14 @@ class VectorStore:
                     }
                 )
 
-        # Sort by combined score descending
-        combined.sort(key=lambda x: x["score"], reverse=True)
+        # Sort by combined score descending, then by collection order for ties
+        order_map = {str(chunk_id): idx for idx, chunk_id in enumerate(all_ids)}
+        combined.sort(
+            key=lambda x: (
+                -x["score"],
+                order_map.get(str(x["chunk_id"]), len(order_map)),
+            )
+        )
 
         search_results: List[SearchResult] = []
         for res in combined[:top_k]:
@@ -233,3 +281,14 @@ class VectorStore:
             name=self.collection_name,
             embedding_function=self.embedding_function,
         )
+
+    def close(self) -> None:
+        close_fn = getattr(self.client, "close", None)
+        if callable(close_fn):
+            close_fn()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
