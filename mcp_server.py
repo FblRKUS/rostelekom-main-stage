@@ -1,3 +1,4 @@
+from typing import Any, cast
 from mcp.server.fastmcp import FastMCP
 from index import index_repository
 from vector_store import VectorStore
@@ -30,8 +31,8 @@ def search_code(query: str, top_k: int = 5) -> str:
     """
     try:
         if not hasattr(search_code, "_store"):
-            search_code._store = VectorStore()
-        store = search_code._store
+            cast(Any, search_code)._store = VectorStore()
+        store = cast(Any, search_code)._store
         results = store.hybrid_search(query, top_k=top_k, alpha=0.75)
 
         output = []
