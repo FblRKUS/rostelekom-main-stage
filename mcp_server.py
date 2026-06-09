@@ -28,7 +28,9 @@ def search_code(query: str, top_k: int = 5) -> str:
     Use this if you just want to find relevant code to read.
     """
     try:
-        store = VectorStore()
+        if not hasattr(search_code, "_store"):
+            search_code._store = VectorStore()
+        store = search_code._store
         results = store.hybrid_search(query, top_k=top_k, alpha=0.75)
         
         output = []
