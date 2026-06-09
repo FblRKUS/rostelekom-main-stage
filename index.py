@@ -96,11 +96,15 @@ def index_repository(path: str | None = None, github: str | None = None) -> str:
 
     tmp_dir_obj = None
     if github:
-        print(f"Downloading repository {github}...")
+        print(f"Downloading repository {github}...", file=sys.stderr)
         owner, repo, preferred_branch = _parse_github_repo_url(github)
         tmp_dir_obj = tempfile.TemporaryDirectory(prefix="code-indexer-")
-        temp_root = Path(tmp_dir_obj.name)
-        dir_path = _download_github_archive(owner, repo, temp_root, preferred_branch)
+        try:
+            temp_root = Path(tmp_dir_obj.name)
+            dir_path = _download_github_archive(owner, repo, temp_root, preferred_branch)
+        except Exception:
+            tmp_dir_obj.cleanup()
+            raise
     else:
         if path is None:
             return "Error: path is None"
