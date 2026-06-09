@@ -2,7 +2,6 @@ from mcp.server.fastmcp import FastMCP
 from index import index_repository
 from vector_store import VectorStore
 from rag_pipeline import RAGAnswerGenerator
-import os
 
 mcp = FastMCP("CodeLens")
 
