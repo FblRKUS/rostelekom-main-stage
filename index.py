@@ -90,27 +90,27 @@ def _download_github_archive(
     raise RuntimeError("Repository archive download failed")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="CodeLens RAG Indexer")
-    parser.add_argument("path", type=str, nargs="?", help="Local directory to index")
-    parser.add_argument("--github", type=str, help="Public GitHub repository URL")
-    args = parser.parse_args()
+def index_repository(path: str | None = None, github: str | None = None) -> str:
+    if not path and not github:
+        return "Error: Specify a local path or --github URL."
 
-    if not args.path and not args.github:
-        print("Error: Specify a local path or --github URL.")
-        sys.exit(1)
-
-    if args.github:
-        print(f"Downloading repository {args.github}...")
-        owner, repo, preferred_branch = _parse_github_repo_url(args.github)
+    tmp_dir_obj = None
+    if github:
+        print(f"Downloading repository {github}...", file=sys.stderr)
+        owner, repo, preferred_branch = _parse_github_repo_url(github)
         tmp_dir_obj = tempfile.TemporaryDirectory(prefix="code-indexer-")
-        temp_root = Path(tmp_dir_obj.name)
-        dir_path = _download_github_archive(owner, repo, temp_root, preferred_branch)
+        try:
+            temp_root = Path(tmp_dir_obj.name)
+            dir_path = _download_github_archive(owner, repo, temp_root, preferred_branch)
+        except Exception:
+            tmp_dir_obj.cleanup()
+            raise
     else:
-        dir_path = Path(args.path).resolve()
+        if path is None:
+            return "Error: path is None"
+        dir_path = Path(path).resolve()
         if not dir_path.is_dir():
-            print(f"Error: {dir_path} is not a valid directory.")
-            sys.exit(1)
+            return f"Error: {dir_path} is not a valid directory."
 
     print(f"Starting indexing for {dir_path}...")
     start_time = time.time()
@@ -123,10 +123,22 @@ def main():
     store.add_chunks(chunks)
 
     elapsed = time.time() - start_time
-    print(f"Successfully indexed {len(chunks)} chunks in {elapsed:.2f} seconds.")
-
-    if args.github:
+    
+    if tmp_dir_obj:
         tmp_dir_obj.cleanup()
+        
+    return f"Successfully indexed {len(chunks)} chunks in {elapsed:.2f} seconds."
+
+def main():
+    parser = argparse.ArgumentParser(description="CodeLens RAG Indexer")
+    parser.add_argument("path", type=str, nargs="?", help="Local directory to index")
+    parser.add_argument("--github", type=str, help="Public GitHub repository URL")
+    args = parser.parse_args()
+
+    result = index_repository(path=args.path, github=args.github)
+    print(result)
+    if result.startswith("Error:"):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
