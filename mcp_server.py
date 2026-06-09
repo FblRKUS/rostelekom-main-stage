@@ -7,12 +7,14 @@ import os
 mcp = FastMCP("CodeLens")
 
 @mcp.tool()
-def index_codebase(path: str = None, github_url: str = None) -> str:
+def index_codebase(path: str | None = None, github_url: str | None = None) -> str:
     """
     Indexes a local directory or a GitHub repository (https://github.com/owner/repo).
     Provide EITHER path OR github_url.
     Note: The indexing may take up to 60 seconds depending on the codebase size.
     """
+    if bool(path) == bool(github_url):
+        return "Error: Provide exactly one of path or github_url."
     try:
         return index_repository(path=path, github=github_url)
     except Exception as e:
