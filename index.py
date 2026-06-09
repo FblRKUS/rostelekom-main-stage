@@ -101,7 +101,9 @@ def index_repository(path: str | None = None, github: str | None = None) -> str:
         tmp_dir_obj = tempfile.TemporaryDirectory(prefix="code-indexer-")
         try:
             temp_root = Path(tmp_dir_obj.name)
-            dir_path = _download_github_archive(owner, repo, temp_root, preferred_branch)
+            dir_path = _download_github_archive(
+                owner, repo, temp_root, preferred_branch
+            )
         except Exception:
             tmp_dir_obj.cleanup()
             raise
@@ -123,11 +125,12 @@ def index_repository(path: str | None = None, github: str | None = None) -> str:
     store.add_chunks(chunks)
 
     elapsed = time.time() - start_time
-    
+
     if tmp_dir_obj:
         tmp_dir_obj.cleanup()
-        
+
     return f"Successfully indexed {len(chunks)} chunks in {elapsed:.2f} seconds."
+
 
 def main():
     parser = argparse.ArgumentParser(description="CodeLens RAG Indexer")
