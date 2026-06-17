@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Optional, List, Dict, Any
 
 try:
@@ -12,9 +13,12 @@ from vector_store import SearchResult
 
 logger = logging.getLogger(__name__)
 
+# Default LLM, overridable via env so deployments can swap models without code edits.
+DEFAULT_MODEL = os.environ.get("CODELENS_LLM_MODEL", "mistral:7b")
+
 
 class RAGAnswerGenerator:
-    def __init__(self, use_llm: bool = True, model: str = "mistral:7b"):
+    def __init__(self, use_llm: bool = True, model: str = DEFAULT_MODEL):
         self.use_llm = use_llm
         self.model = model
         if self.use_llm and not OLLAMA_AVAILABLE:

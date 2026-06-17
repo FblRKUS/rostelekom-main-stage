@@ -1,3 +1,6 @@
+import json
+import logging
+import os
 from dataclasses import dataclass
 from typing import Any, cast, Optional, Dict, List
 
@@ -5,9 +8,9 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 from parser import CodeChunk
-import json
-import os
 from bm25 import BM25
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -55,7 +58,10 @@ class VectorStore:
                 with open(bm25_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self.bm25 = BM25.from_dict(data)
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "Failed to load BM25 index from %s, rebuilding: %s", bm25_path, e
+                )
                 self._rebuild_bm25()
         else:
             self._rebuild_bm25()
@@ -63,7 +69,8 @@ class VectorStore:
     def _rebuild_bm25(self) -> None:
         try:
             data: Any = self.collection.get()
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to read collection while rebuilding BM25: %s", e)
             data = {"metadatas": []}
 
         if data and data.get("metadatas"):
@@ -73,8 +80,8 @@ class VectorStore:
             try:
                 with open(bm25_path, "w", encoding="utf-8") as f:
                     json.dump(self.bm25.to_dict(), f)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to persist BM25 index to %s: %s", bm25_path, e)
         else:
             self.bm25 = BM25()
 
