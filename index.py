@@ -90,7 +90,11 @@ def _download_github_archive(
     raise RuntimeError("Repository archive download failed")
 
 
-def index_repository(path: str | None = None, github: str | None = None) -> str:
+def index_repository(
+    path: str | None = None,
+    github: str | None = None,
+    persist_path: str | None = None,
+) -> str:
     if not path and not github:
         return "Error: Specify a local path or --github URL."
 
@@ -121,7 +125,7 @@ def index_repository(path: str | None = None, github: str | None = None) -> str:
     chunks = indexer.scan_directory(dir_path)
     print(f"Parsed {len(chunks)} chunks.")
 
-    store = VectorStore()
+    store = VectorStore(persist_path=persist_path) if persist_path else VectorStore()
     store.add_chunks(chunks)
 
     elapsed = time.time() - start_time

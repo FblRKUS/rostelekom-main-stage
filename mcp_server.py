@@ -1,11 +1,18 @@
+import hashlib
 import os
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 from index import index_repository
 from vector_store import VectorStore
 from rag_pipeline import RAGAnswerGenerator
 
-_STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
+_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "codelens")
+_ACTIVE_FILE = os.path.join(_CACHE_DIR, "active")
+
+
+def _project_store_path(key: str) -> str:
+    return os.path.join(_CACHE_DIR, hashlib.md5(key.encode()).hexdigest())
 
 mcp = FastMCP("CodeLens")
 
@@ -22,7 +29,12 @@ _store: VectorStore | None = None
 def _get_store() -> VectorStore:
     global _store
     if _store is None:
-        _store = VectorStore(persist_path=_STORE_PATH)
+        store_path = (
+            Path(_ACTIVE_FILE).read_text().strip()
+            if os.path.exists(_ACTIVE_FILE)
+            else _project_store_path("default")
+        )
+        _store = VectorStore(persist_path=store_path)
     return _store
 
 
@@ -33,10 +45,16 @@ def index_codebase(path: str | None = None, github_url: str | None = None) -> st
     Provide EITHER path OR github_url.
     Note: The indexing may take up to 60 seconds depending on the codebase size.
     """
+    global _store
     if bool(path) == bool(github_url):
         return "Error: Provide exactly one of path or github_url."
+    key = str(Path(path).resolve()) if path else (github_url or "")
+    store_path = _project_store_path(key)
+    os.makedirs(_CACHE_DIR, exist_ok=True)
+    Path(_ACTIVE_FILE).write_text(store_path)
+    _store = None  # force reinit with new project's store
     try:
-        return index_repository(path=path, github=github_url)
+        return index_repository(path=path, github=github_url, persist_path=store_path)
     except Exception as e:
         return f"Error during indexing: {e}"
 
