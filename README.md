@@ -71,24 +71,38 @@ docker compose exec ollama ollama pull mistral:7b
 ### Вариант 3. Использование в качестве MCP-сервера
 Система поддерживает интеграцию с локальными AI-агентами (например, Claude Desktop или Cursor) через протокол MCP. Это позволяет вашему агенту не читать весь код самостоятельно (что тратит токены), а поручить поиск и агрегацию серверу CodeLens.
 
-**Инструкция по настройке для Claude Desktop:**
-1. Установите зависимости, включая пакет `mcp`.
-2. Добавьте в конфигурационный файл Claude Desktop (обычно `~/Library/Application Support/Claude/claude_desktop_config.json`) следующий блок:
+**Глобальная установка (Claude Code — работает во всех проектах):**
+
+1. Установите зависимости: `pip install -r requirements.txt`
+2. Создайте или отредактируйте файл `~/.claude/.mcp.json`:
 ```json
 {
   "mcpServers": {
-    "CodeLens": {
-      "command": "/Абсолютный/Путь/К/Этому/Проекту/venv/bin/python",
-      "args": [
-        "-m",
-        "mcp_server"
-      ],
-      "cwd": "/Абсолютный/Путь/К/Этому/Проекту"
+    "codelens": {
+      "command": "/абсолютный/путь/к/этому/проекту/venv/bin/python",
+      "args": ["/абсолютный/путь/к/этому/проекту/mcp_server.py"],
+      "cwd": "/абсолютный/путь/к/этому/проекту"
     }
   }
 }
 ```
-После перезапуска Claude у вас появятся инструменты: `index_codebase`, `search_code`, и `ask_codebase`!
+3. В `~/.claude/settings.json` убедитесь, что `codelens` есть в списке `enabledMcpjsonServers`:
+```json
+{
+  "enabledMcpjsonServers": ["codelens"]
+}
+```
+4. Перезапустите Claude Code.
+
+После этого инструменты доступны **в любом проекте**. Чтобы проиндексировать текущий проект:
+```
+index_codebase(path=".")
+```
+Каждый проект хранит свой индекс отдельно в `~/.cache/codelens/`. Повторная индексация обновляет индекс с нуля.
+
+**Для Claude Desktop:**
+
+Добавьте аналогичный блок в `~/Library/Application Support/Claude/claude_desktop_config.json` под ключ `mcpServers`.
 
 ## Примеры запросов и ответов
 Ниже приведены 5 примеров тестовых запросов и краткое описание ожидаемых ответов от системы RAG:

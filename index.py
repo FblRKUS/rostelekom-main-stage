@@ -126,6 +126,7 @@ def index_repository(
     print(f"Parsed {len(chunks)} chunks.")
 
     store = VectorStore(persist_path=persist_path) if persist_path else VectorStore()
+    store.clear()
     store.add_chunks(chunks)
 
     elapsed = time.time() - start_time
