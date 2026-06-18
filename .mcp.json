@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "codelens": {
+      "command": "/Users/fblrkus/CascadeProjects/rostelekom-main-stage/venv/bin/python",
+      "args": ["/Users/fblrkus/CascadeProjects/rostelekom-main-stage/mcp_server.py"],
+      "cwd": "/Users/fblrkus/CascadeProjects/rostelekom-main-stage"
+    }
+  }
+}

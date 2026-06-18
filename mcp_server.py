@@ -1,7 +1,11 @@
+import os
+
 from mcp.server.fastmcp import FastMCP
 from index import index_repository
 from vector_store import VectorStore
 from rag_pipeline import RAGAnswerGenerator
+
+_STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
 
 mcp = FastMCP("CodeLens")
 
@@ -18,7 +22,7 @@ _store: VectorStore | None = None
 def _get_store() -> VectorStore:
     global _store
     if _store is None:
-        _store = VectorStore()
+        _store = VectorStore(persist_path=_STORE_PATH)
     return _store
 
 
