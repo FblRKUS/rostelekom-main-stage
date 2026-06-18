@@ -6,6 +6,13 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+_EXCLUDED_DIRS = frozenset({
+    "venv", ".venv", "env", ".env",
+    "node_modules", "__pycache__",
+    ".git", ".tox", "dist", "build",
+    ".mypy_cache", ".pytest_cache", ".ruff_cache",
+})
+
 
 @dataclass
 class CodeChunk:
@@ -138,13 +145,11 @@ class CodeIndexer:
 
     def scan_directory(self, directory: Path) -> list[CodeChunk]:
         all_chunks = []
-        # Sort paths to ensure stable order
-        py_files = sorted(directory.rglob("*.py"))
-        java_files = sorted(directory.rglob("*.java"))
-
-        for p in py_files + java_files:
-            if not p.is_file():
-                continue
-            all_chunks.extend(self.parse_file(p, directory))
-
+        for ext in ("*.py", "*.java"):
+            for p in sorted(directory.rglob(ext)):
+                if not p.is_file():
+                    continue
+                if any(part in _EXCLUDED_DIRS for part in p.relative_to(directory).parts):
+                    continue
+                all_chunks.extend(self.parse_file(p, directory))
         return all_chunks
