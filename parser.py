@@ -6,12 +6,23 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_EXCLUDED_DIRS = frozenset({
-    "venv", ".venv", "env", ".env",
-    "node_modules", "__pycache__",
-    ".git", ".tox", "dist", "build",
-    ".mypy_cache", ".pytest_cache", ".ruff_cache",
-})
+_EXCLUDED_DIRS = frozenset(
+    {
+        "venv",
+        ".venv",
+        "env",
+        ".env",
+        "node_modules",
+        "__pycache__",
+        ".git",
+        ".tox",
+        "dist",
+        "build",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+    }
+)
 
 
 @dataclass
@@ -149,7 +160,9 @@ class CodeIndexer:
             for p in sorted(directory.rglob(ext)):
                 if not p.is_file():
                     continue
-                if any(part in _EXCLUDED_DIRS for part in p.relative_to(directory).parts):
+                if any(
+                    part in _EXCLUDED_DIRS for part in p.relative_to(directory).parts
+                ):
                     continue
                 all_chunks.extend(self.parse_file(p, directory))
         return all_chunks
