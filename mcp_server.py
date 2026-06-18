@@ -14,6 +14,7 @@ _ACTIVE_FILE = os.path.join(_CACHE_DIR, "active")
 def _project_store_path(key: str) -> str:
     return os.path.join(_CACHE_DIR, hashlib.md5(key.encode()).hexdigest())
 
+
 mcp = FastMCP("CodeLens")
 
 # Default hybrid-search fusion weight (vector vs. BM25), tuned empirically.
