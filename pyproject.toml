@@ -1,0 +1,6 @@
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ["docs/"]
+
+[tool.ruff]
+exclude = ["docs/"]
