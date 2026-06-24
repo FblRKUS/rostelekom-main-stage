@@ -35,25 +35,32 @@ with st.sidebar:
         "Local path or GitHub URL",
         placeholder="./my_project  or  https://github.com/owner/repo",
     )
-    if st.button("Index", use_container_width=True):
-        if not index_input.strip():
-            st.warning("Enter a path or GitHub URL.")
-        else:
-            with st.spinner("Indexing..."):
-                src = index_input.strip()
-                is_github = src.startswith("http")
-                try:
-                    result = index_repository(
-                        path=None if is_github else src,
-                        github=src if is_github else None,
-                    )
-                    get_store.clear()
-                    if result.startswith("Error"):
-                        st.error(result)
-                    else:
-                        st.success(result)
-                except Exception as e:
-                    st.error(f"Error: {e}")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Index", use_container_width=True):
+            if not index_input.strip():
+                st.warning("Enter a path or GitHub URL.")
+            else:
+                with st.spinner("Indexing..."):
+                    src = index_input.strip()
+                    is_github = src.startswith("http")
+                    try:
+                        result = index_repository(
+                            path=None if is_github else src,
+                            github=src if is_github else None,
+                        )
+                        get_store.clear()
+                        if result.startswith("Error"):
+                            st.error(result)
+                        else:
+                            st.success(result)
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+    with col2:
+        if st.button("Clear Index", use_container_width=True, type="secondary"):
+            get_store().clear()
+            get_store.clear()
+            st.success("Index cleared.")
 
 # Initialize chat history
 if "messages" not in st.session_state:
