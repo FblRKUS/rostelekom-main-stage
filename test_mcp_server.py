@@ -1,7 +1,7 @@
 """Tests for mcp_server tools: index_codebase, search_code, ask_codebase."""
 
 import sys
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 
 def fresh_mcp():
@@ -30,7 +30,7 @@ def test_index_codebase_path_calls_index_repository(tmp_path):
             return_value="Successfully indexed 10 chunks in 1.00 seconds.",
         ) as mock_idx,
         patch("mcp_server.os.makedirs"),
-        patch("builtins.open", mock_open()),
+        patch("pathlib.Path.write_text"),
     ):
         result = m.index_codebase(path=str(tmp_path))
     mock_idx.assert_called_once()
@@ -46,7 +46,7 @@ def test_index_codebase_github_calls_index_repository():
             return_value="Successfully indexed 5 chunks in 2.00 seconds.",
         ) as mock_idx,
         patch("mcp_server.os.makedirs"),
-        patch("builtins.open", mock_open()),
+        patch("pathlib.Path.write_text"),
     ):
         result = m.index_codebase(github_url=url)
     _, kwargs = mock_idx.call_args
@@ -60,7 +60,7 @@ def test_index_codebase_resets_store():
     with (
         patch("mcp_server.index_repository", return_value="ok"),
         patch("mcp_server.os.makedirs"),
-        patch("builtins.open", mock_open()),
+        patch("pathlib.Path.write_text"),
     ):
         m.index_codebase(path="/tmp/x")
     assert m._store is None
@@ -71,7 +71,7 @@ def test_index_codebase_returns_error_on_exception():
     with (
         patch("mcp_server.index_repository", side_effect=RuntimeError("boom")),
         patch("mcp_server.os.makedirs"),
-        patch("builtins.open", mock_open()),
+        patch("pathlib.Path.write_text"),
     ):
         result = m.index_codebase(path="/tmp/x")
     assert "Error" in result
