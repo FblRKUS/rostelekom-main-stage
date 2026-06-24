@@ -1,17 +1,12 @@
 import streamlit as st
-from vector_store import VectorStore
 from rag_pipeline import RAGAnswerGenerator
+from index import index_repository
+from shared import get_store
 
 st.set_page_config(page_title="CodeLens RAG", layout="wide")
 
 st.title("CodeLens RAG")
 st.markdown("Search code using natural language.")
-
-
-# Initialize singleton instances
-@st.cache_resource
-def get_store():
-    return VectorStore()
 
 
 @st.cache_resource
@@ -33,6 +28,32 @@ with st.sidebar:
         step=0.01,
         help="1.0 = Vector search only, 0.0 = Keyword search only (BM25).",
     )
+
+    st.divider()
+    st.subheader("Index Codebase")
+    index_input = st.text_input(
+        "Local path or GitHub URL",
+        placeholder="./my_project  or  https://github.com/owner/repo",
+    )
+    if st.button("Index", use_container_width=True):
+        if not index_input.strip():
+            st.warning("Enter a path or GitHub URL.")
+        else:
+            with st.spinner("Indexing..."):
+                src = index_input.strip()
+                is_github = src.startswith("http")
+                try:
+                    result = index_repository(
+                        path=None if is_github else src,
+                        github=src if is_github else None,
+                    )
+                    get_store.clear()
+                    if result.startswith("Error"):
+                        st.error(result)
+                    else:
+                        st.success(result)
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
 # Initialize chat history
 if "messages" not in st.session_state:

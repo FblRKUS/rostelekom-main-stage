@@ -2,17 +2,12 @@ import json
 from pathlib import Path
 import streamlit as st
 import pandas as pd  # type: ignore[import]
-from vector_store import VectorStore
 from score import score_question
+from shared import get_store
 
 st.set_page_config(page_title="RAG Metrics", layout="wide")
 st.title("Evaluation Metrics")
 st.markdown("Calculate Precision@5 against the evaluation dataset.")
-
-
-@st.cache_resource
-def get_store():
-    return VectorStore()
 
 
 store = get_store()
