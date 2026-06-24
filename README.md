@@ -47,12 +47,12 @@
    ollama pull mistral:7b
    ```
    *Запуск Ollama нативно вне докера позволяет использовать GPU/Metal для сверхбыстрых ответов.*
-3. Проиндексируйте исходный код:
+4. Проиндексируйте исходный код:
    ```bash
    python index.py <путь_к_папке>
    # Пример: python index.py docs/dataset_case3_v1.0_fix/gymhero
    ```
-4. Запустите интерфейс:
+5. Запустите интерфейс:
    ```bash
    streamlit run app.py
    ```
